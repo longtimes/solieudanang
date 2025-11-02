@@ -12,7 +12,10 @@
     select { font-size: 16px; padding: 4px 8px; border-radius: 4px; }
     #bdTable { width: 40%; margin: 10px auto; }
     h2 { text-align: center; margin-top: 30px; }
+    #chartContainer { width: 80%; margin: 30px auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
   </style>
+  <!-- Thêm thư viện Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
   <div id="controls">
@@ -49,6 +52,11 @@
     </tbody>
   </table>
 
+  <!-- Biểu đồ -->
+  <div id="chartContainer">
+    <canvas id="dataChart"></canvas>
+  </div>
+
   <h2 id="stationTitle">Dữ liệu trạm 553600 - Nông Sơn</h2>
   
   <table id="dataTable">
@@ -78,28 +86,27 @@
       "553500": "Tam Kỳ"
     };
 
-    // Dữ liệu mực nước báo động (BĐ) theo trạm
     const bdData = {
-      "553000": [15.0, 19.0, 22.0],   // Thành Mỹ
-      "553100": [14.5, 15.5, 16.5],   // Hội Khách
-      "553300": [6.5, 8.0, 9.0],      // Ái Nghĩa
-      "553400": [1.0, 2.0, 2.5],      // Cẩm Lệ
-      "552600": [26.0, 28.0, 30.0],   // Hiệp Đức
-      "553600": [11.0, 13.0, 15.0],   // Nông Sơn
-      "553200": [6.5, 7.5, 8.8],      // Giao Thủy
-      "552700": [2.0, 3.0, 4.0],      // Câu Lâu
-      "553700": [1.0, 1.5, 2.0],      // Hội An
-      "553500": [1.7, 2.2, 2.7]       // Tam Kỳ
+      "553000": [15.0, 19.0, 22.0],
+      "553100": [14.5, 15.5, 16.5],
+      "553300": [6.5, 8.0, 9.0],
+      "553400": [1.0, 2.0, 2.5],
+      "552600": [26.0, 28.0, 30.0],
+      "553600": [11.0, 13.0, 15.0],
+      "553200": [6.5, 7.5, 8.8],
+      "552700": [2.0, 3.0, 4.0],
+      "553700": [1.0, 1.5, 2.0],
+      "553500": [1.7, 2.2, 2.7]
     };
 
-    // Cập nhật bảng mực nước báo động
+    let chart; // giữ đối tượng biểu đồ để cập nhật sau
+
     function updateBDTable(matram) {
       const tr = document.getElementById('bdValues');
       const values = bdData[matram] || ["-", "-", "-"];
       tr.innerHTML = values.map(v => `<td>${v}</td>`).join('');
     }
 
-    // Hàm tải dữ liệu từ API
     async function loadData(matram) {
       const tbody = document.querySelector('#dataTable tbody');
       tbody.innerHTML = '<tr><td colspan="3">Đang tải dữ liệu...</td></tr>';
@@ -119,14 +126,16 @@
 
         if (!json.data || json.data.length === 0) {
           tbody.innerHTML = '<tr><td colspan="3">Không có dữ liệu</td></tr>';
+          updateChart([], [], matram);
           return;
         }
 
         document.getElementById('stationTitle').textContent = 
           `Dữ liệu trạm ${matram} - ${stationNames[matram] || ""}`;
 
-        // 👇 Đảo ngược thứ tự để hiển thị thời gian mới nhất lên đầu
-        json.data.slice().reverse().forEach(item => {
+        // Đảo ngược để hiển thị mới nhất lên đầu
+        const reversed = json.data.slice().reverse();
+        reversed.forEach(item => {
           const tr = document.createElement('tr');
           tr.innerHTML = `
             <td>${item.matram}</td>
@@ -136,18 +145,59 @@
           tbody.appendChild(tr);
         });
 
+        // Cập nhật biểu đồ
+        const times = reversed.map(i => i.Thoigian_SL);
+        const values = reversed.map(i => parseFloat(i.Solieu));
+        updateChart(times, values, matram);
+
       } catch (err) {
         console.error("Lỗi tải dữ liệu:", err);
         tbody.innerHTML = '<tr><td colspan="3">⚠️ Lỗi tải dữ liệu từ máy chủ</td></tr>';
       }
     }
 
-    // Load dữ liệu mặc định
+    function updateChart(labels, data, matram) {
+      const ctx = document.getElementById('dataChart').getContext('2d');
+      if (chart) chart.destroy();
+
+      chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [{
+            label: `Diễn biến mực nước trạm ${stationNames[matram]}`,
+            data,
+            borderColor: '#007bff',
+            borderWidth: 2,
+            fill: false,
+            tension: 0.2,
+            pointRadius: 2
+          }]
+        },
+        options: {
+          responsive: true,
+          scales: {
+            x: { 
+              title: { display: true, text: 'Thời gian' },
+              ticks: { maxTicksLimit: 10 }
+            },
+            y: { 
+              title: { display: true, text: 'Mực nước (m)' },
+              beginAtZero: false
+            }
+          },
+          plugins: {
+            legend: { display: true },
+            tooltip: { mode: 'index', intersect: false }
+          }
+        }
+      });
+    }
+
     const select = document.getElementById('stationSelect');
     updateBDTable(select.value);
     loadData(select.value);
 
-    // Khi thay đổi trạm
     select.addEventListener('change', () => {
       updateBDTable(select.value);
       loadData(select.value);
