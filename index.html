@@ -12,9 +12,22 @@
     select { font-size: 16px; padding: 4px 8px; border-radius: 4px; }
     #bdTable { width: 40%; margin: 10px auto; }
     h2 { text-align: center; margin-top: 30px; }
-    #chartContainer { width: 80%; margin: 30px auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
+
+    /* Biểu đồ gọn hơn */
+    #chartContainer {
+      width: 60%;
+      margin: 20px auto;
+      background: white;
+      padding: 15px;
+      border-radius: 8px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+    #dataChart {
+      max-height: 300px;
+    }
   </style>
-  <!-- Thêm thư viện Chart.js -->
+
+  <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
@@ -34,22 +47,12 @@
     </select>
   </div>
 
-  <!-- Bảng chỉ số BĐ -->
+  <!-- Bảng báo động -->
   <table id="bdTable">
     <thead>
-      <tr>
-        <th>BĐ1</th>
-        <th>BĐ2</th>
-        <th>BĐ3</th>
-      </tr>
+      <tr><th>BĐ1</th><th>BĐ2</th><th>BĐ3</th></tr>
     </thead>
-    <tbody>
-      <tr id="bdValues">
-        <td>-</td>
-        <td>-</td>
-        <td>-</td>
-      </tr>
-    </tbody>
+    <tbody><tr id="bdValues"><td>-</td><td>-</td><td>-</td></tr></tbody>
   </table>
 
   <!-- Biểu đồ -->
@@ -61,45 +64,27 @@
   
   <table id="dataTable">
     <thead>
-      <tr>
-        <th>Mã trạm</th>
-        <th>Thời gian</th>
-        <th>Số liệu</th>
-      </tr>
+      <tr><th>Mã trạm</th><th>Thời gian</th><th>Số liệu</th></tr>
     </thead>
-    <tbody>
-      <tr><td colspan="3">Đang tải dữ liệu...</td></tr>
-    </tbody>
+    <tbody><tr><td colspan="3">Đang tải dữ liệu...</td></tr></tbody>
   </table>
 
   <script>
     const stationNames = {
-      "553000": "Thành Mỹ",
-      "553100": "Hội Khách",
-      "553300": "Ái Nghĩa",
-      "553400": "Cẩm Lệ",
-      "552600": "Hiệp Đức",
-      "553600": "Nông Sơn",
-      "553200": "Giao Thủy",
-      "552700": "Câu Lâu",
-      "553700": "Hội An",
-      "553500": "Tam Kỳ"
+      "553000": "Thành Mỹ", "553100": "Hội Khách", "553300": "Ái Nghĩa",
+      "553400": "Cẩm Lệ", "552600": "Hiệp Đức", "553600": "Nông Sơn",
+      "553200": "Giao Thủy", "552700": "Câu Lâu", "553700": "Hội An", "553500": "Tam Kỳ"
     };
 
     const bdData = {
-      "553000": [15.0, 19.0, 22.0],
-      "553100": [14.5, 15.5, 16.5],
-      "553300": [6.5, 8.0, 9.0],
-      "553400": [1.0, 2.0, 2.5],
-      "552600": [26.0, 28.0, 30.0],
-      "553600": [11.0, 13.0, 15.0],
-      "553200": [6.5, 7.5, 8.8],
-      "552700": [2.0, 3.0, 4.0],
-      "553700": [1.0, 1.5, 2.0],
-      "553500": [1.7, 2.2, 2.7]
+      "553000": [15.0, 19.0, 22.0], "553100": [14.5, 15.5, 16.5],
+      "553300": [6.5, 8.0, 9.0], "553400": [1.0, 2.0, 2.5],
+      "552600": [26.0, 28.0, 30.0], "553600": [11.0, 13.0, 15.0],
+      "553200": [6.5, 7.5, 8.8], "552700": [2.0, 3.0, 4.0],
+      "553700": [1.0, 1.5, 2.0], "553500": [1.7, 2.2, 2.7]
     };
 
-    let chart; // giữ đối tượng biểu đồ để cập nhật sau
+    let chart;
 
     function updateBDTable(matram) {
       const tr = document.getElementById('bdValues');
@@ -133,7 +118,6 @@
         document.getElementById('stationTitle').textContent = 
           `Dữ liệu trạm ${matram} - ${stationNames[matram] || ""}`;
 
-        // Đảo ngược để hiển thị mới nhất lên đầu
         const reversed = json.data.slice().reverse();
         reversed.forEach(item => {
           const tr = document.createElement('tr');
@@ -145,7 +129,6 @@
           tbody.appendChild(tr);
         });
 
-        // Cập nhật biểu đồ
         const times = reversed.map(i => i.Thoigian_SL);
         const values = reversed.map(i => parseFloat(i.Solieu));
         updateChart(times, values, matram);
@@ -160,22 +143,36 @@
       const ctx = document.getElementById('dataChart').getContext('2d');
       if (chart) chart.destroy();
 
+      const [bd1, bd2, bd3] = bdData[matram] || [null, null, null];
+
       chart = new Chart(ctx, {
         type: 'line',
         data: {
           labels,
-          datasets: [{
-            label: `Diễn biến mực nước trạm ${stationNames[matram]}`,
-            data,
-            borderColor: '#007bff',
-            borderWidth: 2,
-            fill: false,
-            tension: 0.2,
-            pointRadius: 2
-          }]
+          datasets: [
+            {
+              label: `Mực nước (${stationNames[matram]})`,
+              data,
+              borderColor: '#007bff',
+              borderWidth: 2,
+              fill: false,
+              tension: 0.25,
+              pointRadius: 2
+            },
+            ...[bd1, bd2, bd3].map((v, i) => v ? ({
+              label: `BĐ${i+1}: ${v}m`,
+              data: Array(labels.length).fill(v),
+              borderColor: ['#ffa600','#ff6361','#bc5090'][i],
+              borderWidth: 1,
+              borderDash: [6,6],
+              pointRadius: 0,
+              fill: false
+            }) : null).filter(Boolean)
+          ]
         },
         options: {
           responsive: true,
+          maintainAspectRatio: false,
           scales: {
             x: { 
               title: { display: true, text: 'Thời gian' },
@@ -197,7 +194,6 @@
     const select = document.getElementById('stationSelect');
     updateBDTable(select.value);
     loadData(select.value);
-
     select.addEventListener('change', () => {
       updateBDTable(select.value);
       loadData(select.value);
