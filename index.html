@@ -1,16 +1,17 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="vi">
 <head>
   <meta charset="UTF-8">
   <title>Dữ liệu trạm</title>
   <style>
-    body { font-family: Arial, sans-serif; }
-    table { border-collapse: collapse; width: 80%; margin: 20px auto; }
+    body { font-family: Arial, sans-serif; background: #fafafa; }
+    table { border-collapse: collapse; width: 80%; margin: 20px auto; background: white; box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
     th, td { border: 1px solid #333; padding: 8px; text-align: center; }
     th { background-color: #eee; }
     #controls { text-align: center; margin: 20px; }
-    select { font-size: 16px; padding: 4px; }
+    select { font-size: 16px; padding: 4px 8px; border-radius: 4px; }
     #bdTable { width: 40%; margin: 10px auto; }
+    h2 { text-align: center; margin-top: 30px; }
   </style>
 </head>
 <body>
@@ -48,7 +49,7 @@
     </tbody>
   </table>
 
-  <h2 style="text-align:center;" id="stationTitle">Dữ liệu trạm 553600 - Nông Sơn</h2>
+  <h2 id="stationTitle">Dữ liệu trạm 553600 - Nông Sơn</h2>
   
   <table id="dataTable">
     <thead>
@@ -77,26 +78,28 @@
       "553500": "Tam Kỳ"
     };
 
-    // Dữ liệu BĐ theo trạm
+    // Dữ liệu mực nước báo động (BĐ) theo trạm
     const bdData = {
       "553000": [15.0, 19.0, 22.0],   // Thành Mỹ
-      "553100": [14.5, 115.5, 16.5],   // Hội Khách
-      "553300": [6.5, 8.0, 9.0],   // Ái Nghĩa
-      "553400": [1.0, 2.0, 2.5],   // Cẩm Lệ
+      "553100": [14.5, 15.5, 16.5],   // Hội Khách
+      "553300": [6.5, 8.0, 9.0],      // Ái Nghĩa
+      "553400": [1.0, 2.0, 2.5],      // Cẩm Lệ
       "552600": [26.0, 28.0, 30.0],   // Hiệp Đức
       "553600": [11.0, 13.0, 15.0],   // Nông Sơn
-      "553200": [6.5, 7.5, 8.8],   // Giao Thủy
-      "552700": [2.0, 3.0, 4.0],   // Câu Lâu
-      "553700": [1.0, 1.5, 2.0],   // Hội An
-      "553500": [1.7, 2.2, 2.7]   // Tam Kỳ
+      "553200": [6.5, 7.5, 8.8],      // Giao Thủy
+      "552700": [2.0, 3.0, 4.0],      // Câu Lâu
+      "553700": [1.0, 1.5, 2.0],      // Hội An
+      "553500": [1.7, 2.2, 2.7]       // Tam Kỳ
     };
 
+    // Cập nhật bảng mực nước báo động
     function updateBDTable(matram) {
       const tr = document.getElementById('bdValues');
       const values = bdData[matram] || ["-", "-", "-"];
       tr.innerHTML = values.map(v => `<td>${v}</td>`).join('');
     }
 
+    // Hàm tải dữ liệu từ API
     async function loadData(matram) {
       const tbody = document.querySelector('#dataTable tbody');
       tbody.innerHTML = '<tr><td colspan="3">Đang tải dữ liệu...</td></tr>';
@@ -109,7 +112,6 @@
         const thoigiankt = `${today} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
 
         const apiUrl = `/proxy?matram=${matram}&thoigianbd=${encodeURIComponent("'" + thoigianbd + "'")}&thoigiankt=${encodeURIComponent("'" + thoigiankt + "'")}`;
-
         const res = await fetch(apiUrl);
         const json = await res.json();
 
@@ -120,9 +122,11 @@
           return;
         }
 
-        document.getElementById('stationTitle').textContent = `Dữ liệu trạm ${matram} - ${stationNames[matram] || ""}`;
+        document.getElementById('stationTitle').textContent = 
+          `Dữ liệu trạm ${matram} - ${stationNames[matram] || ""}`;
 
-        json.data.forEach(item => {
+        // 👇 Đảo ngược thứ tự để hiển thị thời gian mới nhất lên đầu
+        json.data.slice().reverse().forEach(item => {
           const tr = document.createElement('tr');
           tr.innerHTML = `
             <td>${item.matram}</td>
@@ -133,8 +137,8 @@
         });
 
       } catch (err) {
-        console.error(err);
-        tbody.innerHTML = '<tr><td colspan="3">Lỗi tải dữ liệu</td></tr>';
+        console.error("Lỗi tải dữ liệu:", err);
+        tbody.innerHTML = '<tr><td colspan="3">⚠️ Lỗi tải dữ liệu từ máy chủ</td></tr>';
       }
     }
 
@@ -151,9 +155,3 @@
   </script>
 </body>
 </html>
-
-
-
-
-
-
